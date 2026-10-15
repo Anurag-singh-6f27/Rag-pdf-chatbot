@@ -1,175 +1,180 @@
 # Advanced RAG PDF Chatbot
 
-An intelligent PDF question-answering system built using
-**Retrieval-Augmented Generation (RAG)**. The application allows users
-to upload PDF documents, ask questions in natural language, and receive
-context-grounded answers with document and page references.
+An advanced document question-answering application that combines a
+**React frontend** with a **FastAPI backend** and a Retrieval-Augmented
+Generation (RAG) pipeline. Users can upload PDF documents, build a
+searchable knowledge base, ask questions, and inspect the passages
+retrieved to support an answer.
 
-The project explores how hybrid retrieval, reranking, and context
-optimization can improve the relevance of retrieved information and the
-reliability of LLM-generated answers.
+The backend combines **BM25 keyword retrieval**, **FAISS semantic
+retrieval**, **hybrid retrieval**, and **FlashRank reranking**. It
+returns answers with source document and page information, along with
+retrieval diagnostics.
 
-## Overview
+## Features
 
-Traditional large language models (LLMs) may generate incorrect answers
-when they lack relevant information about a document. This project
-addresses that limitation by retrieving relevant passages from uploaded
-PDFs and providing them as context to a language model before generating
-an answer.
+-   **PDF upload and management** --- upload, select, deselect, and
+    remove PDF documents.
+-   **Two-step knowledge-base workflow** --- upload documents first,
+    then explicitly build the index for selected documents.
+-   **Hybrid retrieval** --- combine BM25 keyword search with FAISS
+    vector search.
+-   **Semantic embeddings** --- embed document chunks for
+    similarity-based retrieval.
+-   **Reranking** --- use FlashRank to rerank candidate passages before
+    answer generation.
+-   **Source-aware answers** --- return source document names, page
+    numbers, and passage previews.
+-   **Retrieval diagnostics** --- expose BM25 hits, semantic hits, merge
+    statistics, reranked results, and context statistics through the
+    API.
+-   **Knowledge-base status** --- report index readiness,
+    document/page/chunk counts, and component status.
+-   **React frontend** --- provides the user interface; the backend
+    exposes a REST API for frontend integration.
 
-The system combines semantic search and keyword-based retrieval to find
-relevant document passages, reranks the retrieved candidates, and
-selects a smaller set of relevant context for answer generation.
+## Architecture
 
-## Key Features
+### Application Architecture
 
--   **PDF Question Answering:** Ask natural-language questions about
-    uploaded PDF documents.
--   **Multi-PDF Support:** Build a knowledge base from multiple
-    documents.
--   **Hybrid Retrieval:** Combine dense vector search using FAISS with
-    keyword-based search using BM25.
--   **Semantic Embeddings:** Represent document chunks as vectors using
-    Sentence Transformers.
--   **Reranking:** Use FlashRank to improve the ordering of retrieved
-    passages by relevance.
--   **Context Optimization:** Reduce irrelevant or redundant context
-    before passing it to the LLM.
--   **Source References:** Present document and page information to help
-    users verify answers.
--   **Retrieval Transparency:** Inspect intermediate retrieval results
-    and relevance scores, where available.
--   **Persistent Indexing:** Reuse saved retrieval indexes instead of
-    rebuilding the knowledge base each time, if enabled in the current
-    implementation.
+The React frontend communicates with the FastAPI backend over HTTP. The
+backend handles PDF ingestion, knowledge-base construction, retrieval,
+reranking, and answer generation.
+
+``` text
+React Frontend
+      |
+      | HTTP requests
+      v
+FastAPI Backend
+      |
+      +--> Document upload and management
+      +--> Knowledge-base build
+      +--> Question answering
+      +--> Source references and retrieval diagnostics
+```
+
+### Backend Architecture
+
+The backend processes uploaded PDFs, builds both semantic and keyword
+indexes, and combines their results to retrieve relevant context for
+answering questions.
+
+``` mermaid
+flowchart TD
+    A[PDF Documents] --> B[PDF Text Extraction<br/>PyMuPDF]
+    B --> C[Text Cleaning and Chunking]
+    C --> D[Document Chunks]
+    D --> E[Embedding Generation]
+    E --> F[Build Retrieval Indexes]
+
+    F --> G[FAISS Index<br/>Semantic Search]
+    F --> H[BM25 Index<br/>Keyword Search]
+
+    G --> I[Hybrid Retrieval]
+    H --> I
+    I --> J[Merge and Deduplicate]
+    J --> K[FlashRank Reranking]
+    K --> L[Context Optimization]
+    L --> M[LLM Answer Generation]
+    M --> N[Answer with Source Details]
+```
+
+#### Pipeline Stages
+
+1.  **PDF text extraction:** PyMuPDF extracts text and page information
+    from uploaded PDFs.
+2.  **Text cleaning and chunking:** Extracted text is cleaned and
+    divided into manageable chunks.
+3.  **Embedding generation:** A sentence-transformer model converts
+    chunks into vectors.
+4.  **Build retrieval indexes:** The backend creates a FAISS vector
+    index and a BM25 keyword index.
+5.  **Hybrid retrieval:** Semantic search and keyword search contribute
+    candidate passages.
+6.  **Merge and deduplicate:** Candidate results are combined and
+    duplicate chunks are removed.
+7.  **FlashRank reranking:** Candidate passages are reranked by
+    relevance when the reranker is available.
+8.  **Context optimization:** The highest-ranked passages are selected
+    for the LLM context.
+9.  **LLM answer generation:** The configured answer-generation provider
+    uses the question and selected context to generate a response.
+10. **Answer with source details:** The API returns the answer, source
+    document/page information, and retrieval diagnostics.
 
 ## Technology Stack
 
-  Component              Technology
-  ---------------------- ------------------------------------------
-  Programming Language   Python
-  User Interface         Streamlit
-  PDF Processing         PyMuPDF
-  Text Embeddings        Sentence Transformers
-  Embedding Model        `sentence-transformers/all-MiniLM-L6-v2`
-  Vector Search          FAISS
-  Keyword Search         BM25
-  Reranking              FlashRank
-  LLM                    Google Gemini API
-  Retrieval Approach     Hybrid Retrieval-Augmented Generation
+  Layer               Technology
+  ------------------- -------------------------------------------
+  Frontend            React
+  Backend API         FastAPI
+  API server          Uvicorn
+  Language            Python
+  PDF extraction      PyMuPDF
+  Text embeddings     Sentence Transformers
+  Vector retrieval    FAISS
+  Keyword retrieval   BM25
+  Reranking           FlashRank
+  Answer generation   LLM integration configured by the backend
+  Configuration       Python settings / environment variables
 
-> Verify that each listed technology and feature is present in the
-> current implementation before publishing.
+The embedding model is configured through `settings.EMBEDDING_MODEL`.
+Check `config.py` for the model name and other runtime settings.
 
-## System Architecture
+## Repository Structure
 
 ``` text
-                 PDF Documents
-                       |
-                       v
-              PDF Text Extraction
-                  (PyMuPDF)
-                       |
-                       v
-             Text Cleaning and Chunking
-                       |
-                       v
-                Document Chunks
-                       |
-                       v
-              Embedding Generation
-                       |
-                       v
-              Build Retrieval Indexes
-                  /           \
-                 v             v
-            FAISS Index     BM25 Index
-          Semantic Search  Keyword Search
-                 \             /
-                  v           v
-                 Hybrid Retrieval
-                       |
-                       v
-              Merge the Deduplicates
-                       |
-                       v
-                  FlashRank
-                   Reranking
-                       |
-                       v
-               Context Optimization
-                       |
-                       v
-             LLM Answer Generation
-                       |
-                       v
-             Answer with Source Details
+Rag-pdf-chatbot/
+├── advanced-rag/
+│   ├── app.py                 # FastAPI application entry point
+│   ├── config.py              # Backend settings (if present here)
+│   ├── src/
+│   │   ├── evaluation/        # Evaluation utilities
+│   │   ├── generation/        # Answer generation
+│   │   ├── ingestion/         # PDF extraction, cleaning, chunking
+│   │   ├── reranking/         # FlashRank reranker
+│   │   ├── retrieval/          # BM25, embeddings, hybrid and vector search
+│   │   └── utils/              # Shared utilities
+│   └── ...
+├── react-app/
+│   └── frontend/              # React frontend
+├── output/                    # Output artifacts, if used
+└── README.md
 ```
 
-## How It Works
+This is a representative structure based on the backend modules. Adjust
+filenames or paths if your checked-out repository differs.
 
-### 1. Document Processing
+## Prerequisites
 
-PDF files are processed using PyMuPDF to extract text page by page. The
-extracted text is cleaned and divided into chunks, ideally preserving
-page metadata so that answers can be traced back to their source.
-
-### 2. Embedding Generation
-
-Each chunk is converted into a numerical vector using a Sentence
-Transformers embedding model. These vectors represent semantic
-information and enable similarity-based retrieval.
-
-### 3. Hybrid Retrieval
-
-The system retrieves relevant passages through two complementary
-approaches:
-
--   **FAISS:** Finds semantically similar passages using vector
-    similarity.
--   **BM25:** Finds passages that match important query keywords.
-
-The retrieved candidates are combined and deduplicated to create a
-broader set of potentially relevant passages.
-
-### 4. Reranking
-
-FlashRank reranks the candidate passages according to their relevance to
-the user's query. This helps prioritize useful information before it
-reaches the language model.
-
-### 5. Context Optimization
-
-The most relevant passages are selected for the final context. Reducing
-irrelevant and redundant information can help control token usage and
-improve the quality of the context provided to the LLM.
-
-### 6. Answer Generation
-
-The selected passages and user query are supplied to Google Gemini
-through a grounded prompt. The application generates an answer based on
-the retrieved document context and presents available source references.
-
-## Installation and Setup
-
-### Prerequisites
-
--   Python installed on your system
+-   Python 3.10 or newer (use the version supported by your
+    dependencies)
+-   Node.js and npm for running the React frontend
 -   Git
--   A Google Gemini API key
--   Internet access for API calls and any initial dependency or model
-    downloads
+-   An API key for the answer-generation provider configured by your
+    backend, if generation is enabled
 
-### 1. Clone the Repository
+## Setup
+
+### 1. Clone the repository
 
 ``` bash
 git clone https://github.com/Anurag-singh-6f27/Rag-pdf-chatbot.git
 cd Rag-pdf-chatbot
 ```
 
-### 2. Create a Virtual Environment
+### 2. Set up the backend
 
-**Windows (PowerShell):**
+Navigate to the backend directory:
+
+``` bash
+cd advanced-rag
+```
+
+Create and activate a virtual environment.
+
+**Windows PowerShell:**
 
 ``` powershell
 python -m venv .venv
@@ -183,147 +188,204 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install Dependencies
-
-Navigate to the directory containing the project's `requirements.txt`
-file, then run:
+Install the backend dependencies. If the backend has a
+`requirements.txt` file, use it:
 
 ``` bash
 pip install -r requirements.txt
 ```
 
-If the requirements file is inside a subdirectory, use its path instead,
-for example:
+If no requirements file is present, install the API server dependencies
+and then install the remaining libraries imported by the project:
 
 ``` bash
-pip install -r advanced-rag/requirements.txt
+pip install fastapi "uvicorn[standard]" python-multipart
 ```
 
-Use the path that actually exists in the repository.
+The RAG pipeline also depends on packages used by the modules in `src/`,
+such as the PDF-processing, embedding, vector-search, BM25, and
+reranking libraries. Install the versions specified by your project
+dependency file when available.
 
-### 4. Configure the Gemini API Key
+### 3. Configure environment variables
 
-Obtain an API key from [Google AI Studio](https://aistudio.google.com/).
+The backend's fallback response indicates that answer generation is
+enabled by setting `GROQ_API_KEY` in a `.env` file. If you use Groq,
+create an `.env` file in the backend's expected working directory:
 
-If the application reads the key from an environment variable named
-`GEMINI_API_KEY`, configure it as follows.
-
-**PowerShell:**
-
-``` powershell
-$env:GEMINI_API_KEY="your_api_key_here"
+``` env
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
-**Linux or macOS:**
+Confirm the required variable names and configuration path in
+`src/generation/answer_generator.py` and `config.py`. Never commit
+`.env` or API keys to Git.
+
+If generation is not configured, the backend can return relevant
+retrieved passages instead of a generated answer.
+
+### 4. Run the backend
+
+From the `advanced-rag` directory, run:
 
 ``` bash
-export GEMINI_API_KEY="your_api_key_here"
+uvicorn app:app --reload
 ```
 
-Alternatively, use a `.env` file if the application supports it. Add
-`.env` to `.gitignore` and never commit API keys or other secrets. Use
-the exact environment variable name expected by your code.
+Uvicorn starts the FastAPI application. Keep this terminal running while
+using the frontend.
 
-### 5. Run the Application
+You can open the interactive API documentation at:
 
-From the directory containing the Streamlit entry-point file, run:
+``` text
+http://127.0.0.1:8000/docs
+```
+
+> The command above assumes `app.py` is directly inside `advanced-rag/`
+> and imports resolve from that directory.
+
+### 5. Run the React frontend
+
+Open a second terminal and navigate to the frontend directory from the
+repository root:
 
 ``` bash
-streamlit run app.py
+cd react-app/frontend
 ```
 
-Replace `app.py` with the actual entry-point filename if your project
-uses a different one. Open the local URL shown in the terminal.
+Install dependencies and start the development server:
 
-## Usage
+``` bash
+npm install
+npm run dev
+```
 
-1.  Launch the Streamlit application.
-2.  Upload one or more PDF documents.
-3.  Build or load the document knowledge base, if required by the
-    application.
-4.  Enter a question about the uploaded content.
-5.  Review the generated answer and available source references.
-6.  Inspect retrieval details, if supported, to understand how passages
-    were selected and reranked.
+Use the local URL printed by the frontend development server. Make sure
+the frontend's API base URL points to the running FastAPI backend
+(usually `http://127.0.0.1:8000` during local development).
 
-For best results, ask specific questions that can be answered using the
-content of the uploaded documents.
+If the frontend uses a different package manager or start script, follow
+its `package.json` scripts.
+
+## API Endpoints
+
+The backend exposes the following routes:
+
+  ----------------------------------------------------------------------------
+  Method               Endpoint                           Purpose
+  -------------------- ---------------------------------- --------------------
+  `GET`                `/api/documents`                   List uploaded
+                                                          documents
+
+  `POST`               `/api/documents/upload`            Upload PDF files
+
+  `DELETE`             `/api/documents/{doc_id}`          Remove a document
+
+  `POST`               `/api/documents/{doc_id}/toggle`   Toggle a document's
+                                                          selection
+
+  `POST`               `/api/documents/toggle-all`        Select or deselect
+                                                          all documents
+
+  `GET`                `/api/kb/status`                   Get knowledge-base
+                                                          and component status
+
+  `POST`               `/api/kb/build`                    Build indexes for
+                                                          selected documents
+
+  `POST`               `/api/chat/ask`                    Retrieve context and
+                                                          answer a question
+  ----------------------------------------------------------------------------
+
+Open `http://127.0.0.1:8000/docs` while the backend is running to
+inspect request schemas and try the endpoints.
+
+### Example: Ask a question
+
+`POST /api/chat/ask`
+
+``` json
+{
+  "query": "What are the main findings in this document?",
+  "selected_doc_ids": []
+}
+```
+
+`selected_doc_ids` can be used to restrict retrieval to a subset of
+indexed documents. Check the API documentation for the exact response
+schema.
+
+## How to Use
+
+1.  Start the FastAPI backend.
+2.  Start the React frontend.
+3.  Upload one or more PDF files.
+4.  Select the documents you want included in the knowledge base.
+5.  Choose **Build Knowledge Base** to extract chunks, generate
+    embeddings, and build the BM25 and FAISS indexes.
+6.  Ask a question in the chat interface.
+7.  Review the answer, source document/page references, and retrieval
+    details.
+
+**Important:** Uploading a PDF does not automatically index it. Build
+the knowledge base after selecting documents before asking questions.
 
 ## Research and Evaluation
 
-This project can be used to investigate whether combining retrieval
-techniques and context optimization improves document question-answering
-quality.
+The architecture supports investigation of how retrieval and reranking
+affect document question-answering. Possible configurations to compare
+include:
 
-Potential evaluation dimensions include:
+  ---------------------------------------------------------------------
+  Configuration                      Pipeline
+  ---------------------------------- ----------------------------------
+  Baseline 1                         FAISS semantic retrieval
 
--   **Retrieval quality:** Whether relevant passages appear among the
-    retrieved results.
--   **Answer faithfulness:** Whether generated answers are supported by
-    the supplied context.
--   **Answer relevance:** Whether responses address the user's question.
--   **Context efficiency:** How much irrelevant information is removed
-    before generation.
--   **Latency:** How long each pipeline stage takes to produce an
-    answer.
+  Baseline 2                         BM25 keyword retrieval
 
-A useful experimental comparison includes the following configurations:
+  Baseline 3                         Hybrid BM25 + FAISS retrieval
 
-  -----------------------------------------------------------------------
-  Configuration                       Retrieval Pipeline
-  ----------------------------------- -----------------------------------
-  Baseline 1                          FAISS-only retrieval
+  Proposed pipeline                  Hybrid retrieval + FlashRank
+                                     reranking + selected context
+  ---------------------------------------------------------------------
 
-  Baseline 2                          BM25-only retrieval
+Potential metrics include Recall@k, Mean Reciprocal Rank (MRR), answer
+faithfulness, answer relevance, and end-to-end latency, depending on the
+evaluation implementation.
 
-  Baseline 3                          BM25 + FAISS hybrid retrieval
+Do not claim performance improvements until experiments have been run
+and results recorded. The `src/evaluation/` directory contains
+evaluation-related modules; inspect the current implementation for
+supported metrics and commands.
 
-  Proposed approach                   Hybrid retrieval + FlashRank
-                                      reranking + context optimization
-  -----------------------------------------------------------------------
+## Notes and Limitations
 
-Report quantitative improvements only after running experiments and
-recording actual results. Possible metrics include Recall@k, Mean
-Reciprocal Rank (MRR), answer faithfulness, answer relevance, and
-end-to-end latency, provided the evaluation setup supports them.
-
-## Project Structure
-
-The repository's visible top-level structure includes these directories:
-
-``` text
-Rag-pdf-chatbot/
-├── advanced-rag/       # Advanced RAG implementation
-├── output/             # Output artifacts
-├── react-app/
-│   └── frontend/       # Frontend application
-└── .gitignore
-```
-
-Update this tree to reflect the exact files, entry points, dependency
-files, and modules in the current repository.
-
-## Security Considerations
-
--   Keep API keys in environment variables or an untracked `.env` file.
--   Do not commit credentials, private documents, or sensitive user
-    data.
--   Review generated answers against the cited source passages before
-    relying on them.
--   Treat LLM-generated answers as potentially incorrect, even when
-    relevant context is retrieved.
+-   Uploaded-document and knowledge-base state is held in application
+    memory in the shown backend implementation. Restarting the backend
+    can clear the in-memory document registry and indexes; uploaded PDF
+    files may remain on disk.
+-   The backend attempts to initialize FlashRank at startup. If it is
+    unavailable, reranking may be skipped and hybrid retrieval order
+    used instead.
+-   If the answer-generation API is not configured, the backend returns
+    retrieved passages as a fallback.
+-   The `groundedness` field is a retrieval-score proxy in this
+    implementation, not a verified measure of answer faithfulness or
+    hallucination.
+-   Do not upload confidential documents unless your data-handling
+    requirements and LLM provider configuration permit it.
 
 ## Future Improvements
 
--   Evaluate retrieval and answer quality using a standardized RAG
-    evaluation framework.
--   Add automated tests for document processing, retrieval, and answer
-    generation.
--   Optimize pipeline latency through profiling and caching.
--   Compare embedding models and reranking strategies.
--   Improve handling of scanned PDFs, tables, and complex document
-    layouts.
--   Add robust unsupported-answer detection and answer verification.
+-   Add automated tests for ingestion, retrieval, API endpoints, and
+    answer generation.
+-   Profile each pipeline stage and optimize latency.
+-   Evaluate retrieval quality and answer faithfulness on a documented
+    dataset.
+-   Add persistent storage for document metadata and indexes if needed.
+-   Improve handling of scanned PDFs, tables, and complex layouts.
+-   Add robust checks for questions that cannot be answered from the
+    uploaded documents.
 
 ## Author
 
@@ -333,5 +395,5 @@ GitHub: [Anurag-singh-6f27](https://github.com/Anurag-singh-6f27)
 
 ## License
 
-No license is specified in this README. Add a license after deciding how
-you want others to use, modify, and distribute the project.
+Add a license file if you intend to specify how others may use, modify,
+and distribute this project.
