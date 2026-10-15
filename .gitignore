@@ -1,0 +1,63 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Testing / type checking cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Generated RAG data
+advanced-rag/data/documents/
+advanced-rag/data/index/
+
+# Evaluation results
+advanced-rag/eval_results/
+
+
+
+# Dependencies
+react-app/frontend/node_modules/
+
+# Production builds
+react-app/frontend/dist/
+react-app/frontend/build/
+
+# Environment variables
+react-app/frontend/.env
+react-app/frontend/.env.*
+!react-app/frontend/.env.example
+
+# Vite cache
+react-app/frontend/.vite/
+
+
+
+
+.vscode/
+.idea/
+
+
+.DS_Store
+Thumbs.db
+
+
+*.tmp
+*.temp
+*.swp
+*.swo
