@@ -90,7 +90,7 @@ selects a smaller set of relevant context for answer generation.
                  Hybrid Retrieval
                        |
                        v
-              Merge and Deduplicate
+              Merge the Deduplicates
                        |
                        v
                   FlashRank
