@@ -100,7 +100,7 @@ selects a smaller set of relevant context for answer generation.
                Context Optimization
                        |
                        v
-             Gemini Answer Generation
+             LLM Answer Generation
                        |
                        v
              Answer with Source Details
