@@ -139,7 +139,7 @@ Rag-pdf-chatbot/
 │   └── ...
 ├── react-app/
 │   └── frontend/              # React frontend
-├── output/                    # Output artifacts, if used
+├── output/                    # Output artifacts
 └── README.md
 ```
 
@@ -387,13 +387,3 @@ supported metrics and commands.
 -   Add robust checks for questions that cannot be answered from the
     uploaded documents.
 
-## Author
-
-**Anurag Singh**
-
-GitHub: [Anurag-singh-6f27](https://github.com/Anurag-singh-6f27)
-
-## License
-
-Add a license file if you intend to specify how others may use, modify,
-and distribute this project.
